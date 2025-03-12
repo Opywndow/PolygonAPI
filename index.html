@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polygon Store</title>
+    <style>
+        /* CSS Variables for easy theme management */
+        :root {
+            --primary-color: #0078D7; /* Windows 8.1 blue */
+            --background-color: #F2F2F2; /* Light gray background */
+            --tile-color-1: #E81123; /* Red */
+            --tile-color-2: #008272; /* Teal */
+            --tile-color-3: #F7630C; /* Orange */
+            --tile-color-4: #6B69D6; /* Purple */
+            --text-color: #FFFFFF; /* White text for tiles */
+            --hover-dark: rgba(0, 0, 0, 0.2); /* Darker overlay on hover */
+        }
+
+        /* Basic styling for the body and layout */
+        body {
+            font-family: "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: #000000; /* Black text for non-tile content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Header styling */
+        .header {
+            width: 100%;
+            background-color: var(--primary-color);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .store-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            margin-left: 20px;
+        }
+
+        .search-bar {
+            padding: 10px;
+            border: none;
+            font-size: 16px;
+            flex-grow: 1;
+            margin: 0 20px;
+            background-color: rgba(255, 255, 255, 0.2); /* Semi-transparent white */
+            color: white;
+        }
+
+        .search-bar::placeholder {
+            color: rgba(255, 255, 255, 0.7); /* Semi-transparent white placeholder */
+        }
+
+        /* Main container */
+        .main-container {
+            width: 90%;
+            margin-top: 20px;
+        }
+
+        /* Section titles */
+        .section-title {
+            font-size: 22px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            color: var(--primary-color);
+        }
+
+        /* Grid container and app styling */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            width: 100%;
+        }
+
+        .app {
+            background: var(--tile-color-1); /* Default tile color */
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            transition: transform 0.3s, background 0.3s, opacity 0.5s;
+            opacity: 0; /* Start invisible for fade-in animation */
+            transform: scale(0.9); /* Start slightly smaller for scale-up animation */
+            aspect-ratio: 1 / 1; /* Make the app cards square */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer; /* Make it touch-friendly */
+            color: var(--text-color); /* White text for tiles */
+        }
+
+        /* Alternate tile colors */
+        .app:nth-child(2n) {
+            background: var(--tile-color-2);
+        }
+
+        .app:nth-child(3n) {
+            background: var(--tile-color-3);
+        }
+
+        .app:nth-child(4n) {
+            background: var(--tile-color-4);
+        }
+
+        .app.loaded {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .app:hover {
+            background: var(--hover-dark); /* Darker overlay on hover */
+            transform: scale(1.05);
+        }
+
+        .app img {
+            width: 80px; /* Icon size */
+            height: 80px;
+            margin-bottom: 10px;
+        }
+
+        .app p {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        /* New Releases Section */
+        .new-releases {
+            margin-top: 30px;
+        }
+
+        .new-releases .grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); /* Smaller cards */
+        }
+
+        .new-releases .app {
+            padding: 15px; /* Smaller padding */
+            font-size: 16px; /* Smaller font size */
+        }
+
+        /* Loading screen styling */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--primary-color); /* Windows 8.1 blue background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+            transform: translateY(0); /* Start on-screen */
+            transition: transform 0.5s ease-out; /* Slide-out animation */
+        }
+
+        #loading-screen.hidden {
+            transform: translateY(-100%); /* Slide out */
+        }
+
+        #loading-screen img {
+            width: 150px; /* Larger logo size */
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite; /* Floating animation */
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            border-top: 8px solid white; /* White spinner */
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" aria-live="polite" aria-busy="true">
+        <img src="intrologo.png" alt="Store Logo"> <!-- Your logo image -->
+        <div class="spinner" aria-hidden="true"></div>
+    </div>
+
+    <!-- Main Content (Store Page) -->
+    <header class="header">
+        <div class="store-name">Polygon Store</div>
+        <input type="text" class="search-bar" placeholder="Search for apps" aria-label="Search for apps">
+    </header>
+    <main class="main-container">
+        <!-- All Apps Section -->
+        <div class="section-title">All Apps</div>
+        <div class="grid" id="apps-grid" aria-live="polite"></div>
+
+        <!-- New Releases Section -->
+        <div class="section-title new-releases">New Releases</div>
+        <div class="grid new-releases" id="new-releases-grid" aria-live="polite"></div>
+    </main>
+    
+    <script>
+        const API_KEY = "AIzaSyAhVb6tj1Rmyigvr5MUblQlRE443T7HUTo"; // Replace with your actual API key
+        const FOLDER_ID = "17UcZNTS3QhVRMpPCa5ilW8U4l9qRye5-";
+        const APPS_GRID = document.getElementById("apps-grid");
+        const NEW_RELEASES_GRID = document.getElementById("new-releases-grid");
+        const LOADING_SCREEN = document.getElementById("loading-screen");
+
+        // Minimum display time for the loading screen (in milliseconds)
+        const MIN_LOADING_TIME = 6000; // 6 seconds (increased from 3 seconds)
+
+        // Show loading screen immediately
+        LOADING_SCREEN.classList.add("active");
+
+        // Function to hide the loading screen after a minimum delay
+        const hideLoadingScreen = () => {
+            const startTime = Date.now();
+
+            // Ensure the loading screen is displayed for at least MIN_LOADING_TIME
+            setTimeout(() => {
+                LOADING_SCREEN.classList.add("hidden");
+            }, MIN_LOADING_TIME - (Date.now() - startTime));
+        };
+
+        // Fetch apps from Google Drive
+        const fetchApps = async () => {
+            const url = `https://www.googleapis.com/drive/v3/files?q='${FOLDER_ID}'+in+parents+and+mimeType!='application/vnd.google-apps.folder'&key=${API_KEY}&fields=files(id,name,thumbnailLink)`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Failed to fetch apps");
+                const data = await response.json();
+
+                // Display all apps
+                APPS_GRID.innerHTML = data.files.map(file => `
+                    <div class="app" role="article" data-download-url="https://drive.google.com/uc?export=download&id=${file.id}">
+                        ${file.thumbnailLink ? `<img src="${file.thumbnailLink}" alt="${file.name}">` : ''}
+                        <p>${file.name.replace(/\.[^/.]+$/, "")}</p>
+                    </div>
+                `).join("");
+
+                // Display new releases (first 4 apps as an example)
+                const newReleases = data.files.slice(0, 4); // Show first 4 apps as new releases
+                NEW_RELEASES_GRID.innerHTML = newReleases.map(file => `
+                    <div class="app" role="article" data-download-url="https://drive.google.com/uc?export=download&id=${file.id}">
+                        ${file.thumbnailLink ? `<img src="${file.thumbnailLink}" alt="${file.name}">` : ''}
+                        <p>${file.name.replace(/\.[^/.]+$/, "")}</p>
+                    </div>
+                `).join("");
+
+                // Add animation to each app card after a short delay
+                const apps = document.querySelectorAll(".app");
+                apps.forEach((app, index) => {
+                    setTimeout(() => {
+                        app.classList.add("loaded");
+                    }, index * 100); // Staggered delay for each card
+                });
+
+                // Add click event listeners to app tiles
+                const appTiles = document.querySelectorAll(".app");
+                appTiles.forEach(tile => {
+                    tile.addEventListener("click", () => {
+                        const downloadUrl = tile.getAttribute("data-download-url");
+
+                        // Show the loading screen
+                        LOADING_SCREEN.classList.add("active");
+
+                        // Wait for 6 seconds, then redirect to the download page
+                        setTimeout(() => {
+                            window.location.href = downloadUrl;
+                        }, 6000); // 6 seconds delay
+                    });
+                });
+            } catch (error) {
+                console.error("Error fetching apps:", error);
+                APPS_GRID.innerHTML = `<p>Error fetching apps. Please try again later.</p>`;
+            } finally {
+                // Hide loading screen after minimum delay and apps are loaded
+                hideLoadingScreen();
+            }
+        };
+
+        // Search functionality
+        document.querySelector(".search-bar").addEventListener("input", (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const apps = document.querySelectorAll(".app");
+
+            apps.forEach(app => {
+                const appName = app.querySelector("p").textContent.toLowerCase();
+                app.style.display = appName.includes(searchTerm) ? "block" : "none";
+            });
+        });
+
+        // Initialize
+        fetchApps();
+    </script>
+</body>
+</html>
